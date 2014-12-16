@@ -1,8 +1,11 @@
 <%@ jet 
 	imports="
 		org.talend.core.model.process.INode 
-		org.talend.designer.codegen.config.CodeGeneratorArgument
 		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		java.util.List
 	" 
 %>
 <% 
@@ -10,8 +13,53 @@
     INode node = (INode)codeGenArgument.getArgument();
     String cid = node.getUniqueName(); 
 	String mode = ElementParameterParser.getValue(node, "__MODE__");
+   List<? extends IConnection> connsCurrentUnsampledReport = node.getOutgoingConnections("CURRENT_UNSAMPLED_REPORT");
+   String currentUnsampledReportRowName = null;
+   if (connsCurrentUnsampledReport != null && connsCurrentUnsampledReport.size() > 0) {
+    	IConnection connTemp = connsCurrentUnsampledReport.get(0);
+    	if (connTemp.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+    		currentUnsampledReportRowName = connTemp.getName();
+    	}
+   }  
     %>
+
+<%  if ("LIST".equals(mode)) { %>
 	} // close while from output connection of <%=cid%> 
-<%  if ("LIST".equals(mode)) { %>	
-	globalMap.put("<%=cid%>_UNSAMPLED_REPORTS_NB_LINE", countUnsampledReports_<%=cid%>);
+	globalMap.put("<%=cid%>_NB_LINE_UNSAMPLED_REPORTS", countUnsampledReports_<%=cid%>);
+<%  } else if ("START".equals(mode) && currentUnsampledReportRowName != null) { %>
+	} // close while from output connection of <%=cid%> 
+<%  } else if ("PARSE".equals(mode)) {
+    IConnection connPlain = null;
+    IConnection connDimensions = null;
+    IConnection connMetrics = null;
+	boolean normalizedFlows = "true".equals(ElementParameterParser.getValue(node, "__NORMALIZED_OUTPUT__"));
+    if (node.getOutgoingConnections() != null && node.getOutgoingConnections().size() > 0) {
+    	if (normalizedFlows) {
+		    List<? extends IConnection> connsDimensions = node.getOutgoingConnections("DIMENSION_VALUES");
+		    if (connsDimensions != null && connsDimensions.size() > 0) {
+		    	connDimensions = connsDimensions.get(0);
+		    }
+		    List<? extends IConnection> connsMetrics = node.getOutgoingConnections("METRIC_VALUES");
+		    if (connsMetrics != null && connsMetrics.size() > 0) {
+		    	connMetrics = connsMetrics.get(0);
+		    }
+    	} else {
+		    List<? extends IConnection> connsPlain = node.getOutgoingConnections();
+		    if (connsPlain != null && connsPlain.size() > 0) {
+		    	connPlain = connsPlain.get(0);
+		    }
+    	}
+    } %>
+<%  if (connDimensions != null || connMetrics != null || connPlain != null) { %>    
+	} // close while from the connection of <%=cid%>
 <%  } %>
+<%  if (connDimensions != null) { %>    
+	globalMap.put("<%=cid%>_NB_LINE_DIMENSION_VALUES", countDimensionValues_<%=cid%>);
+<%  } %>
+<%  if (connMetrics != null) { %>    
+	globalMap.put("<%=cid%>_NB_LINE_METRIC_VALUES", countMetricValues_<%=cid%>);
+<%  } %>
+<%  if (connPlain != null) { %>    
+	globalMap.put("<%=cid%>_NB_LINE", countPlain_<%=cid%>);
+<%  } %>
+<%  }  %>

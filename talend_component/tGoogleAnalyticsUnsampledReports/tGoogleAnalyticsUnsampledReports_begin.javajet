@@ -2,9 +2,12 @@
 	imports="
 		org.talend.core.model.process.INode 
 		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
 		org.talend.core.model.process.IConnection
 		org.talend.core.model.process.IConnectionCategory
 		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
 		java.util.List
 	" 
 %>
@@ -49,15 +52,20 @@
     	if (connTemp.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
     		currentUnsampledReportRowName = connTemp.getName();
     	}
-   }
+   }  
 %>
+
+<%   if ("PARSE".equals(mode) == false) { 
+     // we do not need the client for parsing the result file 
+%>
+
     // start creating client
 <% if ("true".equals(keepClient)) {%>
-	de.jlo.talendcomp.googleanalytics.UnsampledReportHelper <%=cid%> = de.jlo.talendcomp.googleanalytics.UnsampledReportHelper.getFromCache(<%=accountEmail%> + <%=keepClientName%> + "<%=cid%>" + jobName);
+	de.jlo.talendcomp.gaunsampled.UnsampledReportHelper <%=cid%> = de.jlo.talendcomp.gaunsampled.UnsampledReportHelper.getFromCache(<%=accountEmail%> + <%=keepClientName%> + "<%=cid%>" + jobName);
 	if (<%=cid%> == null) {
-		<%=cid%> = new de.jlo.talendcomp.googleanalytics.UnsampledReportHelper();
+		<%=cid%> = new de.jlo.talendcomp.gaunsampled.UnsampledReportHelper();
 <% } else {%>
-	    de.jlo.talendcomp.googleanalytics.UnsampledReportHelper <%=cid%> = new de.jlo.talendcomp.googleanalytics.UnsampledReportHelper();
+	    de.jlo.talendcomp.gaunsampled.UnsampledReportHelper <%=cid%> = new de.jlo.talendcomp.gaunsampled.UnsampledReportHelper();
 <% }%>
 <% if (applicationName != null && applicationName.trim().isEmpty() == false) {%>
 	    <%=cid%>.setApplicationName(<%=applicationName%>);
@@ -87,14 +95,18 @@
 	    }
 	    globalMap.put("<%=cid%>", <%=cid%>);
 <% if ("true".equals(keepClient)) {%>
-	    de.jlo.talendcomp.googleanalytics.UnsampledReportHelper.putIntoCache(<%=accountEmail%> + <%=keepClientName%> + "<%=cid%>" + jobName, <%=cid%>);
+	    de.jlo.talendcomp.gaunsampled.UnsampledReportHelper.putIntoCache(<%=accountEmail%> + <%=keepClientName%> + "<%=cid%>" + jobName, <%=cid%>);
 	} // end if (<%=cid%> == null) {
 <% }%>
-	// account parameters
+	// account parameters necessary to setup the report and to list the reports
 	<%=cid%>.setAccountId(<%=accountId%>);
 	<%=cid%>.setWebPropertyId(<%=webPropertyId%>);
 	<%=cid%>.setProfileId(<%=profileId%>);
-<% if ("START".equals(mode)) { %>
+
+<%  }  // end of check of NOT parsing mode %> 
+
+<%  if ("START".equals(mode)) { %>
+
    // start a unsampled report
 	<%=cid%>.setStartDate(<%=startDate%>);
 	// for selecting data for one day, set end date == start date
@@ -120,19 +132,25 @@
 	    globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
 	    throw e;
     }
+    
+<%  if (currentUnsampledReportRowName != null) { %>    
     if (report != null) {
-		   <%=currentUnsampledReportRowName%> = new <%=currentUnsampledReportRowName%>Struct();
-		   <%=currentUnsampledReportRowName%>.REPORT_ID = report.getId();
-		   globalMap.put("<%=cid%>_CURRENT_REPORT_ID", <%=currentUnsampledReportRowName%>.REPORT_ID);
-		   <%=currentUnsampledReportRowName%>.PROFILE_ID = Long.parseLong(report.getProfileId());
-		   <%=currentUnsampledReportRowName%>.ACCOUNT_ID = Long.parseLong(report.getAccountId());
-		   <%=currentUnsampledReportRowName%>.WEBPROPERTY_ID = report.getWebPropertyId();
-		   <%=currentUnsampledReportRowName%>.REPORT_CREATED = new java.util.Date(report.getCreated().getValue());
-		   <%=currentUnsampledReportRowName%>.REPORT_UPDATED = new java.util.Date(report.getUpdated().getValue());
-		   <%=currentUnsampledReportRowName%>.REPORT_TITLE = report.getTitle();
-		   <%=currentUnsampledReportRowName%>.REPORT_STATUS = report.getStatus();
-		   <%=currentUnsampledReportRowName%>.REPORT_SELFLINK = report.getSelfLink();
-<% } else { %>
+	   <%=currentUnsampledReportRowName%> = new <%=currentUnsampledReportRowName%>Struct();
+	   <%=currentUnsampledReportRowName%>.REPORT_ID = report.getId();
+	   globalMap.put("<%=cid%>_CURRENT_REPORT_ID", <%=currentUnsampledReportRowName%>.REPORT_ID);
+	   <%=currentUnsampledReportRowName%>.PROFILE_ID = Long.parseLong(report.getProfileId());
+	   <%=currentUnsampledReportRowName%>.ACCOUNT_ID = Long.parseLong(report.getAccountId());
+	   <%=currentUnsampledReportRowName%>.WEBPROPERTY_ID = report.getWebPropertyId();
+	   <%=currentUnsampledReportRowName%>.REPORT_CREATED = new java.util.Date(report.getCreated().getValue());
+	   <%=currentUnsampledReportRowName%>.REPORT_UPDATED = new java.util.Date(report.getUpdated().getValue());
+	   <%=currentUnsampledReportRowName%>.REPORT_TITLE = report.getTitle();
+	   <%=currentUnsampledReportRowName%>.REPORT_STATUS = report.getStatus();
+	   <%=currentUnsampledReportRowName%>.REPORT_SELFLINK = report.getSelfLink();
+<% } %>
+
+<% } else  if ("LIST".equals(mode)) { 
+    // List reports
+%>
 	// List the reports
    <%=cid%>.reset();
 	try {
@@ -144,21 +162,172 @@
 	    throw e;
    }
    int countUnsampledReports_<%=cid%> = 0; 
+ <% if (unsampledReportsRowName != null) { %>
 	while (<%=cid%>.next()) {
-		   <%=unsampledReportsRowName%> = new <%=unsampledReportsRowName%>Struct();
-		   com.google.api.services.analytics.model.UnsampledReport report = <%=cid%>.getCurrentUnsampledReport();
-		   <%=unsampledReportsRowName%>.REPORT_ID = report.getId();
-		   <%=unsampledReportsRowName%>.PROFILE_ID = Long.parseLong(report.getProfileId());
-		   <%=unsampledReportsRowName%>.ACCOUNT_ID = Long.parseLong(report.getAccountId());
-		   <%=unsampledReportsRowName%>.WEBPROPERTY_ID = report.getWebPropertyId();
-		   <%=unsampledReportsRowName%>.REPORT_CREATED = new java.util.Date(report.getCreated().getValue());
-		   <%=unsampledReportsRowName%>.REPORT_UPDATED = new java.util.Date(report.getUpdated().getValue());
-		   <%=unsampledReportsRowName%>.REPORT_TITLE = report.getTitle();
-		   <%=unsampledReportsRowName%>.REPORT_STATUS = report.getStatus();
-		   <%=unsampledReportsRowName%>.REPORT_DOWNLOAD_TYPE = report.getDownloadType();
-		   <%=unsampledReportsRowName%>.REPORT_CLOUDSTORAGE_BUCKET_ID = (report.getCloudStorageDownloadDetails() != null ? report.getCloudStorageDownloadDetails().getBucketId() : null); 
-		   <%=unsampledReportsRowName%>.REPORT_CLOUDSTORAGE_OBJECT_ID = (report.getCloudStorageDownloadDetails() != null ? report.getCloudStorageDownloadDetails().getObjectId() : null); 
-		   <%=unsampledReportsRowName%>.REPORT_DRIVE_DOCUMENT_ID = (report.getDriveDownloadDetails() != null ? report.getDriveDownloadDetails().getDocumentId() : null);
-		   <%=unsampledReportsRowName%>.REPORT_SELFLINK = report.getSelfLink();
-		   countUnsampledReports_<%=cid%>++;
+	   <%=unsampledReportsRowName%> = new <%=unsampledReportsRowName%>Struct();
+	   com.google.api.services.analytics.model.UnsampledReport report = <%=cid%>.getCurrentUnsampledReport();
+	   <%=unsampledReportsRowName%>.REPORT_ID = report.getId();
+	   <%=unsampledReportsRowName%>.PROFILE_ID = Long.parseLong(report.getProfileId());
+	   <%=unsampledReportsRowName%>.ACCOUNT_ID = Long.parseLong(report.getAccountId());
+	   <%=unsampledReportsRowName%>.WEBPROPERTY_ID = report.getWebPropertyId();
+	   <%=unsampledReportsRowName%>.REPORT_CREATED = new java.util.Date(report.getCreated().getValue());
+	   <%=unsampledReportsRowName%>.REPORT_UPDATED = new java.util.Date(report.getUpdated().getValue());
+	   <%=unsampledReportsRowName%>.REPORT_TITLE = report.getTitle();
+	   <%=unsampledReportsRowName%>.REPORT_STATUS = report.getStatus();
+	   <%=unsampledReportsRowName%>.REPORT_DOWNLOAD_TYPE = report.getDownloadType();
+	   <%=unsampledReportsRowName%>.REPORT_CLOUDSTORAGE_BUCKET_ID = (report.getCloudStorageDownloadDetails() != null ? report.getCloudStorageDownloadDetails().getBucketId() : null); 
+	   <%=unsampledReportsRowName%>.REPORT_CLOUDSTORAGE_OBJECT_ID = (report.getCloudStorageDownloadDetails() != null ? report.getCloudStorageDownloadDetails().getObjectId() : null); 
+	   <%=unsampledReportsRowName%>.REPORT_DRIVE_DOCUMENT_ID = (report.getDriveDownloadDetails() != null ? report.getDriveDownloadDetails().getDocumentId() : null);
+	   <%=unsampledReportsRowName%>.REPORT_SELFLINK = report.getSelfLink();
+	   countUnsampledReports_<%=cid%>++;
 <% } %>
+
+<% 
+
+   } else  if ("PARSE".equals(mode)) { 
+    // Parse reports
+    
+	String inputFile = ElementParameterParser.getValue(node, "__RESULT_FILE__");
+	String numberFormatLocale = ElementParameterParser.getValue(node, "__NUMBERFORMAT_LOCALE__");
+	if (numberFormatLocale != null && numberFormatLocale.isEmpty() == false) {
+		numberFormatLocale = "\"" + numberFormatLocale + "\"";
+	} else {
+		numberFormatLocale = "null";
+	}
+	
+    List<IMetadataColumn> listColumns = null;
+    IConnection connPlain = null;
+    IConnection connDimensions = null;
+    IConnection connMetrics = null;
+	boolean normalizedFlows = "true".equals(ElementParameterParser.getValue(node, "__NORMALIZED_OUTPUT__"));
+    if (node.getOutgoingConnections() != null && node.getOutgoingConnections().size() > 0) {
+    	if (normalizedFlows) {
+		    List<? extends IConnection> connsDimensions = node.getOutgoingConnections("DIMENSION_VALUES");
+		    if (connsDimensions != null && connsDimensions.size() > 0) {
+		    	connDimensions = connsDimensions.get(0);
+		    }
+		    List<? extends IConnection> connsMetrics = node.getOutgoingConnections("METRIC_VALUES");
+		    if (connsMetrics != null && connsMetrics.size() > 0) {
+		    	connMetrics = connsMetrics.get(0);
+		    }
+    	} else {
+		    List<? extends IConnection> connsPlain = node.getOutgoingConnections();
+		    if (connsPlain != null && connsPlain.size() > 0) {
+		    	connPlain = connsPlain.get(0);
+		        IMetadataTable metadata = connPlain.getMetadataTable();
+		        listColumns = metadata.getListColumns();
+		    }
+    	}
+    }
+    boolean useHeaderInfo = "true".equals(ElementParameterParser.getValue(node, "__USE_HEADER_INFO__"));
+%>
+	de.jlo.talendcomp.gaunsampled.ResultFileParser <%=cid%> = new de.jlo.talendcomp.gaunsampled.ResultFileParser();
+	<%=cid%>.initializeFile(<%=inputFile%>);
+	<%=cid%>.setSetDimensionsAndMetricsFromHeader(<%=useHeaderInfo%>);
+	globalMap.put("<%=cid%>_PROFILE_ID_INFO", <%=cid%>.getProfileIdInfo());
+	globalMap.put("<%=cid%>_METRICS_INFO", <%=cid%>.getMetricsInfo());
+	globalMap.put("<%=cid%>_DIMENSIONS_INFO", <%=cid%>.getDimensionsInfo());
+	globalMap.put("<%=cid%>_FILTERS_INFO", <%=cid%>.getFiltersInfo());
+	globalMap.put("<%=cid%>_SEGMENT_INFO", <%=cid%>.getSegmentInfo());
+	globalMap.put("<%=cid%>_START_DATE_INFO", <%=cid%>.getStartDateInfo());
+	globalMap.put("<%=cid%>_END_DATE_INFO", <%=cid%>.getEndDateInfo());
+<% if (useHeaderInfo == false) {
+     if (dimensions != null && dimensions.trim().isEmpty() == false) {%>
+	<%=cid%>.setDimensions(<%=dimensions%>);
+<%   } %>
+	<%=cid%>.setMetrics(<%=metrics%>);
+<% } %>	
+<% if (normalizedFlows) { %>
+
+	// deliver the output in 2 normalized flows for dimensions and metrics
+	int countDimensionValues_<%=cid%> = 0;
+	int countMetricValues_<%=cid%> = 0;
+	while (true) {
+		try {
+			// next calls the necessary calls to hasNextPlainRecord()
+			if (<%=cid%>.nextNormalizedRecord() == false) {
+				break;
+			}
+		} catch (Exception e) {
+			globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
+			throw e;
+	    }
+<%	 if (connDimensions != null) { %> 
+		de.jlo.talendcomp.gaunsampled.DimensionValue dv = <%=cid%>.getCurrentDimensionValue();
+		if (dv != null) {
+			<%=connDimensions.getName()%> = new <%=connDimensions.getName()%>Struct();
+			<%=connDimensions.getName()%>.ROW_NUM = dv.rowNum;
+			<%=connDimensions.getName()%>.DIMENSION_NAME = dv.name;
+			<%=connDimensions.getName()%>.DIMENSION_VALUE = dv.value;
+			countDimensionValues_<%=cid%>++;
+		} else {
+			<%=connDimensions.getName()%> = null;
+		}
+<%   } %>
+<%   if (connMetrics != null) { %>
+		de.jlo.talendcomp.gaunsampled.MetricValue mv = <%=cid%>.getCurrentMetricValue();
+		if (mv != null) {
+		    <%=connMetrics.getName()%> = new <%=connMetrics.getName()%>Struct();
+			<%=connMetrics.getName()%>.ROW_NUM = mv.rowNum;
+			<%=connMetrics.getName()%>.METRIC_NAME = mv.name;
+			<%=connMetrics.getName()%>.METRIC_VALUE = mv.value;
+			countMetricValues_<%=cid%>++;
+		} else {
+			<%=connMetrics.getName()%> = null;
+		}
+<%   } %>
+
+<% } else {  // if (normalizedFlows  %>	
+
+	int countPlain_<%=cid%> = 0;
+	// deliver the output as plain flow
+	// with dimension and metrics as columns
+	boolean warningAboutSchemaMismatchDone = false;
+	while (true) {
+	    try {
+		    // hasNextPlainRecord() executes a new query if needed
+		    if (<%=cid%>.hasNextPlainRecord() == false) {
+		    	break;
+		    }
+		    countPlain_<%=cid%>++;
+	    } catch (Exception e) {
+			globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
+			throw e;
+	    }
+	    // next row from results
+		java.util.List<String> dataset_<%=cid%> = <%=cid%>.getNextPlainRecord();
+<%  if (connPlain != null) { %>
+		// create a new row, thats avoid the need of setting attributes to null
+		<%=connPlain.getName()%> = new <%=connPlain.getName()%>Struct();
+<%  } %>
+<%	int index = 0;
+    if (listColumns != null && connPlain != null) {
+        for (IMetadataColumn col : listColumns) {
+        String javaClassName = JavaTypesManager.getJavaTypeFromId(col.getTalendType()).getNullableClass().getName(); %>
+		// fill schema field <%=col.getLabel()%>
+		if (dataset_<%=cid%>.size() > <%=index%>) {
+			String <%=cid%>_value_<%=index%> = dataset_<%=cid%>.get(<%=index%>);
+			if (<%=cid%>_value_<%=index%> != null) {
+<%          if ("java.lang.String".equals(javaClassName)) { %>
+				<%=connPlain.getName()%>.<%=col.getLabel()%> = <%=cid%>_value_<%=index%>;
+<%              } else { %>
+    	        try {
+					<%=connPlain.getName()%>.<%=col.getLabel()%> = (<%=javaClassName%>) de.jlo.talendcomp.gaunsampled.Util.convertToDatatype(
+							<%=cid%>_value_<%=index%>, 
+							"<%=col.getTalendType().substring(3)%>", 
+							<%=((col.getPattern() != null && col.getPattern().isEmpty() == false) ? col.getPattern() : numberFormatLocale)%>);
+				} catch (Exception e) {
+					throw new Exception("Convert field: <%=connPlain.getName()%>.<%=col.getLabel()%> value=[" + <%=cid%>_value_<%=index%> + "] countLines=" + countPlain_<%=cid%> + " failed:" + e.getMessage(), e);		
+				}
+<%          } %>
+			}
+		} else if (warningAboutSchemaMismatchDone == false) {
+			warningAboutSchemaMismatchDone = true;
+			System.err.println("Warning, the schema contains more columns than the ga result provides (current index=<%=index%>). Please check this!");
+		}
+<%      index++; %>
+<%      }  // end for %>
+<%  } // end if  (listColumns != null && connPlain != null)  %>
+<%  } // if (normalizedFlows... %>
+
+<% }   // End of mode PARSE %>
