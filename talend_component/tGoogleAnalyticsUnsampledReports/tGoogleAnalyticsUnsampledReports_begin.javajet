@@ -16,7 +16,7 @@
    INode node = (INode) codeGenArgument.getArgument();
    String cid = node.getUniqueName();
    String applicationName = ElementParameterParser.getValue(node, "__APPLICATION_NAME__");
-   boolean useServiceAccount = "true".equals(ElementParameterParser.getValue(node, "__USE_SERVICE_ACCOUNT__"));
+   boolean useServiceAccount = "SERVICE_ACCOUNT".equals(ElementParameterParser.getValue(node, "__AUTHENTICATION_METHOD__"));
    String clientSecretFile = ElementParameterParser.getValue(node, "__CLIENT_SECRET_FILE__");
    String userEmail = ElementParameterParser.getValue(node, "__USER_ACCOUNT_EMAIL__");
 	String accountEmail = ElementParameterParser.getValue(node, "__SERVICE_ACCOUNT_EMAIL__");
@@ -224,13 +224,13 @@
 	de.jlo.talendcomp.gaunsampled.ResultFileParser <%=cid%> = new de.jlo.talendcomp.gaunsampled.ResultFileParser();
 	<%=cid%>.initializeFile(<%=inputFile%>);
 	<%=cid%>.setSetDimensionsAndMetricsFromHeader(<%=useHeaderInfo%>);
-	globalMap.put("<%=cid%>_PROFILE_ID_INFO", <%=cid%>.getProfileIdInfo());
-	globalMap.put("<%=cid%>_METRICS_INFO", <%=cid%>.getMetricsInfo());
-	globalMap.put("<%=cid%>_DIMENSIONS_INFO", <%=cid%>.getDimensionsInfo());
-	globalMap.put("<%=cid%>_FILTERS_INFO", <%=cid%>.getFiltersInfo());
-	globalMap.put("<%=cid%>_SEGMENT_INFO", <%=cid%>.getSegmentInfo());
-	globalMap.put("<%=cid%>_START_DATE_INFO", <%=cid%>.getStartDateInfo());
-	globalMap.put("<%=cid%>_END_DATE_INFO", <%=cid%>.getEndDateInfo());
+	globalMap.put("<%=cid%>_REPORT_PROFILE_ID", <%=cid%>.getProfileIdInfo());
+	globalMap.put("<%=cid%>_REPORT_METRICS", <%=cid%>.getMetricsInfo());
+	globalMap.put("<%=cid%>_REPORT_DIMENSIONS", <%=cid%>.getDimensionsInfo());
+	globalMap.put("<%=cid%>_REPORT_FILTERS", <%=cid%>.getFiltersInfo());
+	globalMap.put("<%=cid%>_REPORT_SEGMENT", <%=cid%>.getSegmentInfo());
+	globalMap.put("<%=cid%>_REPORT_START_DATE", <%=cid%>.getStartDateInfo());
+	globalMap.put("<%=cid%>_REPORT_END_DATE", <%=cid%>.getEndDateInfo());
 <% if (useHeaderInfo == false) {
      if (dimensions != null && dimensions.trim().isEmpty() == false) {%>
 	<%=cid%>.setDimensions(<%=dimensions%>);
