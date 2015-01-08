@@ -413,7 +413,7 @@ public class UnsampledReportHelper {
 		return endDate;
 	}
 
-	public void setEndDate(Date startDate) {
+	public void setEndDate(Date endDate) {
 		if (endDate == null) {
 			throw new IllegalArgumentException("endDate cannot be null.");
 		}
