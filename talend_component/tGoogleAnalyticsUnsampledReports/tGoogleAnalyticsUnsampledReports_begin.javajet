@@ -36,6 +36,7 @@
 	String metrics = ElementParameterParser.getValue(node, "__METRICS__");
 	String filters = ElementParameterParser.getValue(node, "__FILTERS__");
 	String segment = ElementParameterParser.getValue(node, "__SEGMENT__");
+	boolean addDate = "true".equals(ElementParameterParser.getValue(node, "__ADD_DATE__"));
 	keepClientName = keepClientName != null && keepClientName.isEmpty() == false ? keepClientName : "\"\"";
    List<? extends IConnection> connsUnsampledReports = node.getOutgoingConnections("UNSAMPLED_REPORTS");
    String unsampledReportsRowName = null;
@@ -107,10 +108,11 @@
 
 <%  if ("START".equals(mode)) { %>
 
-   // start a unsampled report
-	<%=cid%>.setStartDate(<%=startDate%>);
-	// for selecting data for one day, set end date == start date
-	<%=cid%>.setEndDate(<%=endDate%>);
+    // start a unsampled report
+    <%=cid%>.addDateDimensionForDateRange(<%=addDate%>);
+    <%=cid%>.setStartDate(<%=startDate%>);
+    // for selecting data for one day, set end date == start date
+    <%=cid%>.setEndDate(<%=endDate%>);
 <% if (dimensions != null && dimensions.trim().isEmpty() == false) {%>
 	<%=cid%>.setDimensions(<%=dimensions%>);
 <% }%>
@@ -128,6 +130,9 @@
 	try {
 	    System.out.println("Start report...");
 	    report = <%=cid%>.startUnsampledReport();
+	    if (<%=cid%>.isDateDimensionAdded()) {
+	    	System.out.println("Date dimension added.");
+	    }
     } catch (Exception e) {
 	    globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
 	    throw e;
@@ -200,6 +205,7 @@
     IConnection connDimensions = null;
     IConnection connMetrics = null;
 	boolean normalizedFlows = "true".equals(ElementParameterParser.getValue(node, "__NORMALIZED_OUTPUT__"));
+	boolean denormalizeDate = "true".equals(ElementParameterParser.getValue(node, "__DENORMALIZE_DATE__"));
     if (node.getOutgoingConnections() != null && node.getOutgoingConnections().size() > 0) {
     	if (normalizedFlows) {
 		    List<? extends IConnection> connsDimensions = node.getOutgoingConnections("DIMENSION_VALUES");
@@ -238,7 +244,7 @@
 	<%=cid%>.setMetrics(<%=metrics%>);
 <% } %>	
 <% if (normalizedFlows) { %>
-
+   <%=cid%>.setExcludeDate(<%=denormalizeDate%>);
 	// deliver the output in 2 normalized flows for dimensions and metrics
 	int countDimensionValues_<%=cid%> = 0;
 	int countMetricValues_<%=cid%> = 0;
@@ -248,6 +254,9 @@
 			if (<%=cid%>.nextNormalizedRecord() == false) {
 				break;
 			}
+<% if (denormalizeDate) { %>
+	      globalMap.put("<%=cid%>_CURRENT_DATE", <%=cid%>.getCurrentDate());
+<% } %>
 		} catch (Exception e) {
 			globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
 			throw e;
@@ -267,7 +276,7 @@
 <%   if (connMetrics != null) { %>
 		de.jlo.talendcomp.gaunsampled.MetricValue mv = <%=cid%>.getCurrentMetricValue();
 		if (mv != null) {
-		    <%=connMetrics.getName()%> = new <%=connMetrics.getName()%>Struct();
+		   <%=connMetrics.getName()%> = new <%=connMetrics.getName()%>Struct();
 			<%=connMetrics.getName()%>.ROW_NUM = mv.rowNum;
 			<%=connMetrics.getName()%>.METRIC_NAME = mv.name;
 			<%=connMetrics.getName()%>.METRIC_VALUE = mv.value;
@@ -303,7 +312,7 @@
 <%	int index = 0;
     if (listColumns != null && connPlain != null) {
         for (IMetadataColumn col : listColumns) {
-        String javaClassName = JavaTypesManager.getJavaTypeFromId(col.getTalendType()).getNullableClass().getName(); %>
+	        String javaClassName = JavaTypesManager.getJavaTypeFromId(col.getTalendType()).getNullableClass().getName(); %>
 		// fill schema field <%=col.getLabel()%>
 		if (dataset_<%=cid%>.size() > <%=index%>) {
 			String <%=cid%>_value_<%=index%> = dataset_<%=cid%>.get(<%=index%>);
