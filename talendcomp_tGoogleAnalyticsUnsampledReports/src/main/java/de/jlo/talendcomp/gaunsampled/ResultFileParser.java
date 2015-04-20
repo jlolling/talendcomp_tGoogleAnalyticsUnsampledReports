@@ -5,7 +5,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,6 +25,9 @@ public class ResultFileParser {
 	private int maxCountNormalizedValues = 0;
 	private int currentNormalizedValueIndex = 0;
 	private List<DimensionValue> currentResultRowDimensionValues;
+	private Date currentDate;
+	private static final String DATE_DIME = "ga:date";
+	private boolean excludeDate = false;
 	private List<MetricValue> currentResultRowMetricValues;
 	private int countDimensions = 0;
 	private static final String DIMENSIONS_KEY = "dimensions:";
@@ -39,6 +45,7 @@ public class ResultFileParser {
 	private String startDateInfo = null;
 	private String endDateInfo = null;
 	private boolean setDimensionsAndMetricsFromHeader = true;
+	private SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd");
 
 	public void initializeFile(String filePath) throws Exception {
 		if (filePath == null || filePath.trim().isEmpty()) {
@@ -49,11 +56,14 @@ public class ResultFileParser {
 			throw new IllegalStateException("File " + f.getAbsolutePath() + " cannot be read!");
 		}
 		br = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
-		skipHeaderRows();
+		processHeaderRows();
 		if (setDimensionsAndMetricsFromHeader) {
 			setMetrics(metricsInfo);
 			setDimensions(dimensionsInfo);
 		}
+		currentPlainRowIndex = 0;
+		currentNormalizedValueIndex = 0;
+		maxCountNormalizedValues = 0;
 	}
 
 	public void close() {
@@ -82,11 +92,11 @@ public class ResultFileParser {
 		requestedDimensionNames = new ArrayList<String>();
 		String[] dimensionArray = dimensions.split("[,;]");
 		for (String dimension : dimensionArray) {
-			requestedDimensionNames.add(dimension);
+			requestedDimensionNames.add(dimension.trim());
 		}
 		countDimensions = requestedDimensionNames.size();
 	}
-	
+		
 	private String extractInfoValue(String line, String key) {
 		int pos = line.indexOf(key);
 		if (pos > 0) {
@@ -123,7 +133,7 @@ public class ResultFileParser {
 		}
 	}
 	
-	private void skipHeaderRows() throws Exception {
+	private void processHeaderRows() throws Exception {
 		dimensionsInfo = null;
 		metricsInfo = null;
 		filtersInfo = null;
@@ -221,6 +231,10 @@ public class ResultFileParser {
 		}
 	}
 	
+	public Date getCurrentDate() {
+		return currentDate;
+	}
+	
 	public MetricValue getCurrentMetricValue() {
 		if (currentNormalizedValueIndex == 0) {
 			throw new IllegalStateException("Call nextNormalizedRecord() at first!");
@@ -266,13 +280,24 @@ public class ResultFileParser {
 
 	private List<DimensionValue> buildDimensionValues(List<String> oneRow) {
 		int index = 0;
+		currentDate = null;
 		final List<DimensionValue> oneRowDimensionValues = new ArrayList<DimensionValue>();
 		for (; index < requestedDimensionNames.size(); index++) {
 			DimensionValue dm = new DimensionValue();
 			dm.name = requestedDimensionNames.get(index);
 			dm.value = oneRow.get(index);
 			dm.rowNum = currentPlainRowIndex;
-			oneRowDimensionValues.add(dm);
+        	if (excludeDate && DATE_DIME.equalsIgnoreCase(dm.name.trim().toLowerCase())) {
+        		try {
+        			if (dm.value != null) {
+    					currentDate = dateFormatter.parse(dm.value);
+        			}
+				} catch (ParseException e) {
+					throw new RuntimeException("ga:date value=" + dm.value + " cannot be parsed as Date.", e);
+				}
+        	} else {
+    			oneRowDimensionValues.add(dm);
+        	}
 		}
 		currentResultRowDimensionValues = oneRowDimensionValues;
 		setMaxCountNormalizedValues(currentResultRowDimensionValues.size());
@@ -461,6 +486,14 @@ public class ResultFileParser {
 	public void setSetDimensionsAndMetricsFromHeader(
 			boolean setDimensionsAndMetricsFromHeader) {
 		this.setDimensionsAndMetricsFromHeader = setDimensionsAndMetricsFromHeader;
+	}
+
+	public boolean isExcludeDate() {
+		return excludeDate;
+	}
+
+	public void setExcludeDate(boolean excludeDate) {
+		this.excludeDate = excludeDate;
 	}
 
 }

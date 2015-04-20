@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,8 +61,12 @@ public class UnsampledReportHelper {
 	private String startDate;
 	private String endDate;
 	private String reportTitle;
+	private boolean addDateDimension = false;
+	private boolean dateDimAdded = false;
+	private static final String DATE_DIME = "ga:date";
 	public static final String DRIVE = "https://www.googleapis.com/auth/drive";
 	public static final String DRIVE_FILE = "https://www.googleapis.com/auth/drive.file";
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 	
 	public static void putIntoCache(String key, UnsampledReportHelper gam) {
 		clientCache.put(key, gam);
@@ -244,14 +249,31 @@ public class UnsampledReportHelper {
 		this.innerLoopWaitInterval = innerLoopWaitInterval;
 	}
 	
+	private void checkAddDateDimension() {
+		if (startDate.equals(endDate) == false) {
+			if (dimensions != null) {
+				if (dimensions.toLowerCase().contains(DATE_DIME) == false) {
+					dimensions = DATE_DIME + "," + dimensions;
+					dateDimAdded = true;
+				}
+			} else {
+				dimensions = DATE_DIME;
+				dateDimAdded = true;
+			}
+		}
+	}
+	
 	public UnsampledReport startUnsampledReport() throws Exception {
+		if (addDateDimension) {
+			checkAddDateDimension();
+		}
 		UnsampledReport reportRequest = new UnsampledReport();
+		reportRequest.setStartDate(startDate);
+		reportRequest.setEndDate(endDate);
 		reportRequest.setMetrics(metrics);
 		reportRequest.setDimensions(dimensions);
 		reportRequest.setFilters(filters);
 		reportRequest.setSegment(segment);
-		reportRequest.setStartDate(startDate);
-		reportRequest.setEndDate(endDate);
 		reportRequest.setTitle(reportTitle);
 		reportRequest.setDownloadType("GOOGLE_DRIVE");
 		UnsampledReport reportResponse = analyticsClient
@@ -364,6 +386,7 @@ public class UnsampledReportHelper {
 		} else {
 			this.dimensions = null;
 		}
+		dateDimAdded = false;
 	}
 
 	public String getFilters() {
@@ -394,9 +417,14 @@ public class UnsampledReportHelper {
 		return startDate;
 	}
 
-	public void setStartDate(String startDate) {
+	public void setStartDate(String startDate) throws Exception {
 		if (startDate == null || startDate.trim().isEmpty()) {
 			throw new IllegalArgumentException("startDate cannot be null or empty.");
+		}
+		try {
+			sdf.parse(startDate);
+		} catch (ParseException pe) {
+			throw new Exception("Start date must follow the pattern: yyyy-MM-dd", pe);
 		}
 		this.startDate = startDate.trim();
 	}
@@ -405,7 +433,6 @@ public class UnsampledReportHelper {
 		if (startDate == null) {
 			throw new IllegalArgumentException("startDate cannot be null.");
 		}
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 		this.startDate = sdf.format(startDate);
 	}
 
@@ -417,13 +444,17 @@ public class UnsampledReportHelper {
 		if (endDate == null) {
 			throw new IllegalArgumentException("endDate cannot be null.");
 		}
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 		this.endDate = sdf.format(endDate);
 	}
 
-	public void setEndDate(String endDate) {
+	public void setEndDate(String endDate) throws Exception {
 		if (endDate == null || endDate.trim().isEmpty()) {
 			throw new IllegalArgumentException("endDate cannot be null or empty.");
+		}
+		try {
+			sdf.parse(endDate);
+		} catch (ParseException pe) {
+			throw new Exception("End date must follow the pattern: yyyy-MM-dd", pe);
 		}
 		this.endDate = endDate.trim();
 	}
@@ -450,6 +481,14 @@ public class UnsampledReportHelper {
 
 	public void setClientSecretFile(String clientSecretFile) {
 		this.clientSecretFile = clientSecretFile;
+	}
+
+	public boolean isDateDimensionAdded() {
+		return dateDimAdded;
+	}
+
+	public void addDateDimensionForDateRange(boolean addDateDimension) {
+		this.addDateDimension = addDateDimension;
 	}
 
 }
