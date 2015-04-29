@@ -54,6 +54,8 @@
     		currentUnsampledReportRowName = connTemp.getName();
     	}
    }  
+	String maxAttempts = ElementParameterParser.getValue(node, "__MAX_ATTEMPTS__");
+	String innerLoopWaitTime = ElementParameterParser.getValue(node, "__WAIT_TIME_BETWEEN_REQUESTS__");
 %>
 
 <%   if ("PARSE".equals(mode) == false) { 
@@ -86,6 +88,12 @@
 <% if (timeOffset != null && timeOffset.trim().isEmpty() == false) {%>
 	    <%=cid%>.setTimeOffsetMillisToPast(<%=timeOffset%>);
 <% }%>
+<% if (innerLoopWaitTime != null && innerLoopWaitTime.trim().isEmpty() == false) { %>
+		<%=cid%>.setInnerLoopWaitInterval(<%=innerLoopWaitTime%>);
+<% } %>
+<% if (maxAttempts != null && maxAttempts.trim().isEmpty() == false) { %>
+    	<%=cid%>.setMaxRetriesInCaseOfErrors(<%=maxAttempts%>);
+<% } %>
 	    try {
 	        // initialize client with private key
 	        System.out.println("Initialise client...");
@@ -133,8 +141,12 @@
 	    if (<%=cid%>.isDateDimensionAdded()) {
 	    	System.out.println("Date dimension added.");
 	    }
+	    globalMap.put("<%=cid%>_RESPONSE_STATUS_CODE", <%=cid%>.getLastHttpStatusCode());
+	    globalMap.put("<%=cid%>_RESPONSE_STATUS_MESSAGE", <%=cid%>.getLastHttpStatusMessage());
     } catch (Exception e) {
 	    globalMap.put("<%=cid%>_ERROR_MESSAGE", e.getMessage());
+	    globalMap.put("<%=cid%>_RESPONSE_STATUS_CODE", <%=cid%>.getLastHttpStatusCode());
+	    globalMap.put("<%=cid%>_RESPONSE_STATUS_MESSAGE", <%=cid%>.getLastHttpStatusMessage());
 	    throw e;
     }
     

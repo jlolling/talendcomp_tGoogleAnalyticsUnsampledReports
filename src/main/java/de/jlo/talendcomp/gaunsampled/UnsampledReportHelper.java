@@ -13,27 +13,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.json.GoogleJsonError;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.googleapis.json.GoogleJsonError.ErrorInfo;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.HttpResponseException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.Clock;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.analytics.Analytics;
+import com.google.api.services.analytics.AnalyticsRequest;
 import com.google.api.services.analytics.AnalyticsScopes;
 import com.google.api.services.analytics.model.UnsampledReport;
 import com.google.api.services.analytics.model.UnsampledReports;
 
 public class UnsampledReportHelper {
 
+	private Logger logger = null;
 	private static final Map<String, UnsampledReportHelper> clientCache = new HashMap<String, UnsampledReportHelper>();
 	private final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
 	private final JsonFactory JSON_FACTORY = new JacksonFactory();
@@ -263,34 +272,84 @@ public class UnsampledReportHelper {
 		}
 	}
 	
-	public UnsampledReport startUnsampledReport() throws Exception {
+	private int maxRetriesInCaseOfErrors = 5;
+	private int currentAttempt = 0;
+	private int errorCode = 0;
+	private String errorMessage = null;
+
+	private com.google.api.client.json.GenericJson execute(AnalyticsRequest<?> request) throws IOException {
+		com.google.api.client.json.GenericJson response = null;
+		int waitTime = 1000;
+		for (currentAttempt = 0; currentAttempt < maxRetriesInCaseOfErrors; currentAttempt++) {
+			errorCode = 0;
+			try {
+				response = (GenericJson) request.execute();
+				break;
+			} catch (IOException ge) {
+				if (ge instanceof GoogleJsonResponseException) {
+					 GoogleJsonError gje = ((GoogleJsonResponseException) ge).getDetails();
+					 if (gje != null) {
+						 List<ErrorInfo> errors = gje.getErrors();
+						 if (errors != null && errors.isEmpty() == false) {
+							 ErrorInfo ei = errors.get(0);
+							 errorMessage = ei.getMessage();
+						 }
+					 }
+				}
+				if (ge instanceof HttpResponseException) {
+					errorCode = ((HttpResponseException) ge).getStatusCode();
+				}
+				warn("Got error:" + ge.getMessage());
+				if (currentAttempt == (maxRetriesInCaseOfErrors - 1)) {
+					error("All repetition of requests failed:" + ge.getMessage(), ge);
+					throw ge;
+				} else {
+					// wait
+					try {
+						info("Retry request in " + waitTime + "ms");
+						Thread.sleep(waitTime);
+					} catch (InterruptedException ie) {}
+					waitTime = waitTime * 2;
+				}
+			}
+			try {
+				Thread.sleep(innerLoopWaitInterval);
+			} catch (InterruptedException e) {
+				break;
+			}
+		}
+		return response;
+	}
+
+	public UnsampledReport startUnsampledReport() throws IOException  {
 		if (addDateDimension) {
 			checkAddDateDimension();
 		}
-		UnsampledReport reportRequest = new UnsampledReport();
-		reportRequest.setStartDate(startDate);
-		reportRequest.setEndDate(endDate);
-		reportRequest.setMetrics(metrics);
-		reportRequest.setDimensions(dimensions);
-		reportRequest.setFilters(filters);
-		reportRequest.setSegment(segment);
-		reportRequest.setTitle(reportTitle);
-		reportRequest.setDownloadType("GOOGLE_DRIVE");
-		UnsampledReport reportResponse = analyticsClient
+		UnsampledReport report = new UnsampledReport();
+		report.setStartDate(startDate);
+		report.setEndDate(endDate);
+		report.setMetrics(metrics);
+		report.setDimensions(dimensions);
+		report.setFilters(filters);
+		report.setSegment(segment);
+		report.setTitle(reportTitle);
+		report.setDownloadType("GOOGLE_DRIVE");
+		return (UnsampledReport) execute(
+				analyticsClient
 				.management()
 				.unsampledReports()
-				.insert(accountId, webPropertyId, profileId, reportRequest)
-				.execute();
-		return reportResponse;
+				.insert(accountId, webPropertyId, profileId, report));
 	}
 	
 	public void collectUnsampledReports() throws Exception {
 		listUnsampledReports = new ArrayList<UnsampledReport>();
-		UnsampledReports reports = analyticsClient
+		UnsampledReports reports = (UnsampledReports) execute(
+				analyticsClient
 				.management()
-				.unsampledReports()
-				.list(accountId, webPropertyId, profileId)
-			    .execute();
+				.unsampledReports().list(
+			      accountId,
+			      webPropertyId,
+			      profileId));
 		if (reports != null && reports.getItems() != null) {
 			for (UnsampledReport report : reports.getItems()) {
 				listUnsampledReports.add(report);
@@ -491,4 +550,63 @@ public class UnsampledReportHelper {
 		this.addDateDimension = addDateDimension;
 	}
 
+	public int getLastHttpStatusCode() {
+		return errorCode;
+	}
+
+	public String getLastHttpStatusMessage() {
+		return errorMessage;
+	}
+
+	public void info(String message) {
+		if (logger != null) {
+			logger.info(message);
+		} else {
+			System.out.println("INFO:" + message);
+		}
+	}
+	
+	public void debug(String message) {
+		if (logger != null) {
+			logger.debug(message);
+		} else {
+			System.out.println("DEBUG:" + message);
+		}
+	}
+
+	public void warn(String message) {
+		if (logger != null) {
+			logger.warn(message);
+		} else {
+			System.err.println("WARN:" + message);
+		}
+	}
+
+	public void error(String message, Exception e) {
+		if (logger != null) {
+			logger.error(message, e);
+		} else {
+			System.err.println("ERROR:" + message);
+		}
+	}
+
+	public void setLogger(Logger logger) {
+		this.logger = logger;
+	}
+
+	public void setMaxRetriesInCaseOfErrors(Integer maxRetriesInCaseOfErrors) {
+		if (maxRetriesInCaseOfErrors != null && maxRetriesInCaseOfErrors > 0) {
+			this.maxRetriesInCaseOfErrors = maxRetriesInCaseOfErrors;
+		}
+	}
+
+	public void setInnerLoopWaitInterval(Number innerLoopWaitInterval) {
+		if (innerLoopWaitInterval != null) {
+			long value = innerLoopWaitInterval.longValue();
+			if (value > 500l) {
+				this.innerLoopWaitInterval = value;
+			}
+		}
+	}
+	
 }
