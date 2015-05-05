@@ -276,8 +276,12 @@ public class UnsampledReportHelper {
 	private int currentAttempt = 0;
 	private int errorCode = 0;
 	private String errorMessage = null;
+	private String reason = null;
 
 	private com.google.api.client.json.GenericJson execute(AnalyticsRequest<?> request) throws IOException {
+		try {
+			Thread.sleep(innerLoopWaitInterval);
+		} catch (InterruptedException e) {}
 		com.google.api.client.json.GenericJson response = null;
 		int waitTime = 1000;
 		for (currentAttempt = 0; currentAttempt < maxRetriesInCaseOfErrors; currentAttempt++) {
@@ -286,6 +290,10 @@ public class UnsampledReportHelper {
 				response = (GenericJson) request.execute();
 				break;
 			} catch (IOException ge) {
+				warn("Got error:" + ge.getMessage());
+				if (ge instanceof HttpResponseException) {
+					errorCode = ((HttpResponseException) ge).getStatusCode();
+				}
 				if (ge instanceof GoogleJsonResponseException) {
 					 GoogleJsonError gje = ((GoogleJsonResponseException) ge).getDetails();
 					 if (gje != null) {
@@ -293,13 +301,14 @@ public class UnsampledReportHelper {
 						 if (errors != null && errors.isEmpty() == false) {
 							 ErrorInfo ei = errors.get(0);
 							 errorMessage = ei.getMessage();
+							 reason = ei.getReason();
+							 if ("dailyLimitExceeded".equals(reason) || errorMessage != null && errorMessage.toLowerCase().contains("reached the maximum")) {
+								 error("Limitations reached. Stop trying.", ge);
+								 throw ge;
+							 }
 						 }
 					 }
 				}
-				if (ge instanceof HttpResponseException) {
-					errorCode = ((HttpResponseException) ge).getStatusCode();
-				}
-				warn("Got error:" + ge.getMessage());
 				if (currentAttempt == (maxRetriesInCaseOfErrors - 1)) {
 					error("All repetition of requests failed:" + ge.getMessage(), ge);
 					throw ge;
@@ -311,11 +320,6 @@ public class UnsampledReportHelper {
 					} catch (InterruptedException ie) {}
 					waitTime = waitTime * 2;
 				}
-			}
-			try {
-				Thread.sleep(innerLoopWaitInterval);
-			} catch (InterruptedException e) {
-				break;
 			}
 		}
 		return response;
