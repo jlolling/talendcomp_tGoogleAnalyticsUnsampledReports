@@ -1,3 +1,18 @@
+/**
+ * Copyright 2015 Jan Lolling jan.lolling@gmail.com
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package de.jlo.talendcomp.gaunsampled;
 
 import java.io.File;
@@ -21,9 +36,6 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.json.GoogleJsonError;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.googleapis.json.GoogleJsonError.ErrorInfo;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponseException;
@@ -270,14 +282,16 @@ public class UnsampledReportHelper {
 				dateDimAdded = true;
 			}
 		}
+		if (dateDimAdded) {
+			System.out.println("Date dimension added: Dimensions are now: " + dimensions);
+		}
 	}
 	
 	private int maxRetriesInCaseOfErrors = 5;
 	private int currentAttempt = 0;
 	private int errorCode = 0;
 	private String errorMessage = null;
-	private String reason = null;
-
+	
 	private com.google.api.client.json.GenericJson execute(AnalyticsRequest<?> request) throws IOException {
 		try {
 			Thread.sleep(innerLoopWaitInterval);
@@ -293,21 +307,10 @@ public class UnsampledReportHelper {
 				warn("Got error:" + ge.getMessage());
 				if (ge instanceof HttpResponseException) {
 					errorCode = ((HttpResponseException) ge).getStatusCode();
+					errorMessage = ((HttpResponseException) ge).getMessage();
 				}
-				if (ge instanceof GoogleJsonResponseException) {
-					 GoogleJsonError gje = ((GoogleJsonResponseException) ge).getDetails();
-					 if (gje != null) {
-						 List<ErrorInfo> errors = gje.getErrors();
-						 if (errors != null && errors.isEmpty() == false) {
-							 ErrorInfo ei = errors.get(0);
-							 errorMessage = ei.getMessage();
-							 reason = ei.getReason();
-							 if ("dailyLimitExceeded".equals(reason) || errorMessage != null && errorMessage.toLowerCase().contains("reached the maximum")) {
-								 error("Limitations reached. Stop trying.", ge);
-								 throw ge;
-							 }
-						 }
-					 }
+				if (Util.canBeIgnored(ge) == false) {
+					throw ge;
 				}
 				if (currentAttempt == (maxRetriesInCaseOfErrors - 1)) {
 					error("All repetition of requests failed:" + ge.getMessage(), ge);
@@ -318,7 +321,8 @@ public class UnsampledReportHelper {
 						info("Retry request in " + waitTime + "ms");
 						Thread.sleep(waitTime);
 					} catch (InterruptedException ie) {}
-					waitTime = waitTime * 2;
+					int random = (int) Math.random() * 500;
+					waitTime = (waitTime * 2) + random;
 				}
 			}
 		}
