@@ -138,9 +138,6 @@
 	try {
 	    System.out.println("Start report...");
 	    report = <%=cid%>.startUnsampledReport();
-	    if (<%=cid%>.isDateDimensionAdded()) {
-	    	System.out.println("Date dimension added.");
-	    }
 	    globalMap.put("<%=cid%>_RESPONSE_STATUS_CODE", <%=cid%>.getLastHttpStatusCode());
 	    globalMap.put("<%=cid%>_RESPONSE_STATUS_MESSAGE", <%=cid%>.getLastHttpStatusMessage());
     } catch (Exception e) {
