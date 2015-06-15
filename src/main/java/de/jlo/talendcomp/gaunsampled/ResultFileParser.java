@@ -60,6 +60,7 @@ public class ResultFileParser {
 	private String startDateInfo = null;
 	private String endDateInfo = null;
 	private boolean setDimensionsAndMetricsFromHeader = true;
+	private boolean checkMissingFields = true;
 	private SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd");
 
 	public void initializeFile(String filePath) throws Exception {
@@ -216,14 +217,22 @@ public class ResultFileParser {
         	if (pos == -1) {
         		throw new Exception("Dimension " + dim + " not found in header line!");
         	}
-			record.add(extractDataAtDelimiter(pos));
+        	String value = extractDataAtDelimiter(pos);
+        	if (checkMissingFields && (value == null || value.trim().isEmpty())) {
+        		throw new Exception("Missing value for dimension: " + dim + " in data line: " + currentPlainRowIndex);
+        	}
+			record.add(value);
         }
         for (String metric : requestedMetricNames) {
         	int pos = headers.indexOf(metric.toLowerCase());
         	if (pos == -1) {
         		throw new Exception("Metric " + metric + " not found in header line!");
         	}
-			record.add(extractDataAtDelimiter(pos));
+        	String value = extractDataAtDelimiter(pos);
+        	if (checkMissingFields && (value == null || value.trim().isEmpty())) {
+        		throw new Exception("Missing value for metric: " + metric + " in data line: " + currentPlainRowIndex);
+        	}
+			record.add(value);
         }
 		currentPlainRowIndex++;
 		return record;
