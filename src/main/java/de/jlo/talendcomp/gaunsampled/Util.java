@@ -193,8 +193,8 @@ public class Util {
 					ErrorInfo ei = errors.get(0);
 					for (IgnorableError error : listIgnorableErrors) {
 						if (error.code == gre.getStatusCode()) {
-							if (error.reason != null
-									&& error.reason.equals(ei.getReason())) {
+							if (error.reason == null
+									|| error.reason.equals(ei.getReason())) {
 								ignore = true;
 								break;
 							}

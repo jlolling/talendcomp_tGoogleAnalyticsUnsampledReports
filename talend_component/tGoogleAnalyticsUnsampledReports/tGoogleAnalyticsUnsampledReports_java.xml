@@ -4,11 +4,11 @@
 	<HEADER 
 	    PLATEFORM="ALL" 
 	    SERIAL="" 
-	    VERSION="2.7" 
+	    VERSION="2.8" 
 	    STATUS="PROD"
 		COMPATIBILITY="ALL" 
 		AUTHOR="Jan Lolling" 
-		RELEASE_DATE="20150615A"
+		RELEASE_DATE="20150916A"
 		HAS_CONDITIONAL_OUTPUTS="true"
 		STARTABLE="true">
 		<SIGNATURE />
@@ -250,7 +250,7 @@
 	<CODEGENERATION>
 		<IMPORTS>
 			<IMPORT NAME="Google Analytics Unsampled"
-				MODULE="jlo.talendcomp.gaunsampled-2.7-jar-with-dependencies.jar"
+				MODULE="jlo.talendcomp.gaunsampled-2.8-jar-with-dependencies.jar"
 				REQUIRED="true" />
 		</IMPORTS>
 	</CODEGENERATION>

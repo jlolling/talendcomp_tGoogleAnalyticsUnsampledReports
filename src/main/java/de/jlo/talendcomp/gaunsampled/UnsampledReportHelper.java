@@ -310,6 +310,7 @@ public class UnsampledReportHelper {
 					errorMessage = ((HttpResponseException) ge).getMessage();
 				}
 				if (Util.canBeIgnored(ge) == false) {
+					error("Stop processing because of error does not allow retry.");
 					throw ge;
 				}
 				if (currentAttempt == (maxRetriesInCaseOfErrors - 1)) {
@@ -589,10 +590,18 @@ public class UnsampledReportHelper {
 			System.err.println("WARN:" + message);
 		}
 	}
+	
+	public void error(String message) {
+		error(message, null);
+	}
 
 	public void error(String message, Exception e) {
 		if (logger != null) {
-			logger.error(message, e);
+			if (e != null) {
+				logger.error(message, e);
+			} else {
+				logger.error(message);
+			}
 		} else {
 			System.err.println("ERROR:" + message);
 		}

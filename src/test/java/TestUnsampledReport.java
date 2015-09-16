@@ -1,6 +1,13 @@
+import java.io.IOException;
+import java.util.List;
+
+import com.google.api.client.googleapis.json.GoogleJsonError;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.analytics.model.UnsampledReport;
 
-import de.jlo.talendcomp.googleanalytics.UnsampledReportHelper;
+import de.jlo.talendcomp.gaunsampled.ResultFileParser;
+import de.jlo.talendcomp.gaunsampled.UnsampledReportHelper;
 
 public class TestUnsampledReport {
 
@@ -8,10 +15,77 @@ public class TestUnsampledReport {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		testGAManagement();
+		testParseReportFile();
+	}
+	
+	public static void testParseReportFile() {
+		ResultFileParser p = new ResultFileParser();
+		try {
+//			p.initializeFile("/Volumes/Data/Talend/testdata/ga/drive/mobile/0B1aeMk_qSLEkY1NtV1BLUDJSS1k.txt");
+			p.initializeFile("/Volumes/Data/Talend/projects/mobile/mnt/talend/DEVELOPMENT/google_analytics/downloads/0B58W_P4pAxsERnJ1N1gzdDNUeTA.csv");
+			System.out.println("dimensionInfo:" + p.getDimensionsInfo());
+			System.out.println("metricInfo:" + p.getMetricsInfo());
+			System.out.println("profileInfo:" + p.getProfileIdInfo());
+			System.out.println("startDateInfo:" + p.getStartDateInfo());
+			System.out.println("endDate:" + p.getEndDateInfo());
+			System.out.println("segmentInfo:" + p.getSegmentInfo());
+			System.out.println("filterInfo:" + p.getFiltersInfo());
+			while (p.hasNextPlainRecord()) {
+				printout(p.getNextPlainRecord());
+			}
+			System.out.println("Done.");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public static void testParseReportFileNormalized() {
+		ResultFileParser p = new ResultFileParser();
+		try {
+//			p.initializeFile("/Volumes/Data/Talend/testdata/ga/drive/mobile/Jans Test for unsampled_small.csv");
+//			p.setDimensions("d1,d2");
+//			p.setMetrics("m1,m2,m3");
+			p.initializeFile("/Volumes/Data/Talend/projects/mobile/mnt/talend/DEVELOPMENT/google_analytics/downloads/0B58W_P4pAxsEc0ZBb1VJTDhkUHM.csv");
+			p.setMetrics("ga:sessions");
+			// next calls the necessary calls to
+			// hasNextPlainRecord()
+			while (true) {
+				if (p.nextNormalizedRecord() == false) {
+					break;
+				}
+				de.jlo.talendcomp.gaunsampled.DimensionValue dv = p.getCurrentDimensionValue();
+				if (dv != null) {
+					System.out.println(dv);
+				}
+				de.jlo.talendcomp.gaunsampled.MetricValue mv = p.getCurrentMetricValue();
+				if (mv != null) {
+					System.out.println(mv);
+				}
+				System.out.println("------------------");
+			}
+			System.out.println("Done.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 	}
 
-	public static void testGAManagement() {
+	private static void printout(List<String> record) {
+		boolean firstLoop = true;
+		for (String s : record) {
+			if (firstLoop) {
+				firstLoop = false;
+			} else {
+				System.out.print("|");
+			}
+			System.out.print(s);
+		}
+		System.out.println();
+	}
+
+	public static void testInsertReport() {
 
 		UnsampledReportHelper gm = new UnsampledReportHelper();
 		gm.setApplicationName("GATalendComp");
@@ -47,7 +121,7 @@ public class TestUnsampledReport {
 			gm.collectUnsampledReports();
 			while (gm.next()) {
 				if (gm.hasCurrentUnsampledReport()) {
-					printOut(gm.getCurrentUnsampledReport());
+					printout(gm.getCurrentUnsampledReport());
 				}
 			}
 			System.out.println("Done.");
@@ -57,7 +131,7 @@ public class TestUnsampledReport {
 
 	}
 	
-	private static void printOut(UnsampledReport report) {
+	private static void printout(UnsampledReport report) {
 		System.out.println("report-Id=" + report.getId());
 		System.out.println("status=" + report.getStatus());
 		System.out.println("title=" + report.getTitle());
