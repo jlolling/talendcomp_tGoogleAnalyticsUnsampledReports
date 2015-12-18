@@ -15,6 +15,7 @@
  */
 package de.jlo.talendcomp.gaunsampled;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
