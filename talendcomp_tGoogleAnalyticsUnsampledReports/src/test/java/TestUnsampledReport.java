@@ -6,8 +6,8 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.analytics.model.UnsampledReport;
 
-import de.jlo.talendcomp.gaunsampled.ResultFileParser;
-import de.jlo.talendcomp.gaunsampled.UnsampledReportHelper;
+import de.jlo.talendcomp.google.analytics.unsampled.ResultFileParser;
+import de.jlo.talendcomp.google.analytics.unsampled.UnsampledReportHelper;
 
 public class TestUnsampledReport {
 
@@ -15,14 +15,14 @@ public class TestUnsampledReport {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		testParseReportFile();
+		testInsertReport();
 	}
 	
 	public static void testParseReportFile() {
 		ResultFileParser p = new ResultFileParser();
 		try {
 //			p.initializeFile("/Volumes/Data/Talend/testdata/ga/drive/mobile/0B1aeMk_qSLEkY1NtV1BLUDJSS1k.txt");
-			p.initializeFile("/Volumes/Data/Talend/projects/mobile/mnt/talend/DEVELOPMENT/google_analytics/downloads/0B58W_P4pAxsERnJ1N1gzdDNUeTA.csv");
+			p.initializeFile("/Volumes/Data/projects/mobile/mnt/talend/DEVELOPMENT/google_analytics/downloads/0B58W_P4pAxsERnJ1N1gzdDNUeTA.csv");
 			System.out.println("dimensionInfo:" + p.getDimensionsInfo());
 			System.out.println("metricInfo:" + p.getMetricsInfo());
 			System.out.println("profileInfo:" + p.getProfileIdInfo());
@@ -55,11 +55,11 @@ public class TestUnsampledReport {
 				if (p.nextNormalizedRecord() == false) {
 					break;
 				}
-				de.jlo.talendcomp.gaunsampled.DimensionValue dv = p.getCurrentDimensionValue();
+				de.jlo.talendcomp.google.analytics.unsampled.DimensionValue dv = p.getCurrentDimensionValue();
 				if (dv != null) {
 					System.out.println(dv);
 				}
-				de.jlo.talendcomp.gaunsampled.MetricValue mv = p.getCurrentMetricValue();
+				de.jlo.talendcomp.google.analytics.unsampled.MetricValue mv = p.getCurrentMetricValue();
 				if (mv != null) {
 					System.out.println(mv);
 				}
@@ -89,7 +89,7 @@ public class TestUnsampledReport {
 
 		UnsampledReportHelper gm = new UnsampledReportHelper();
 		gm.setApplicationName("GATalendComp");
-
+		gm.setDebug(true);
 //		gm.setAccountEmail("503880615382@developer.gserviceaccount.com");
 //		gm.setKeyFile("/Volumes/Data/Talend/testdata/ga/config/2bc309bb904201fcc6a443ff50a3d8aca9c0a12c-privatekey.p12");
 
@@ -97,6 +97,7 @@ public class TestUnsampledReport {
 		gm.setKeyFile("/Volumes/Data/Talend/testdata/ga/config/af21f07c84b14af09c18837c5a385f8252cc9439-privatekey.p12");
 		gm.setTimeOffsetMillisToPast(10000);
 		gm.setTimeoutInSeconds(240);
+		gm.setInnerLoopWaitInterval(1000);
 		gm.reset();
 		try {
 			System.out.println("initialize client....");
@@ -104,27 +105,34 @@ public class TestUnsampledReport {
 			gm.setAccountId("3584729");
 			gm.setWebPropertyId("UA-3584729-1");
 			gm.setProfileId("33360211");
-			gm.setStartDate("2014-10-01");
-			gm.setEndDate("2014-10-01");
-			gm.setMetrics("ga:pageviews,ga:bounces");
+			gm.setStartDate("2015-10-02");
+			gm.setEndDate("2015-10-02");
+			gm.setMetrics("ga:pageviews");
 			gm.setDimensions("ga:browser");
-			gm.setFilters("ga:bounces>=100");
 //			gm.setSegment("gaid:-1");
 //			gm.setMetrics("ga:pageviews");
 //			gm.setFilters("ga:pagePath=~.*/contactformsend");
 //			gm.setStartDate("2014-12-03");
 //			gm.setEndDate("2014-12-03");
-			gm.setReportTitle("Jans Test 3");
+			gm.setReportTitle("Jans Test to delete 2");
+//			System.out.println("Start report...");
+			gm.startUnsampledReport();
+//			System.out.println("Delete report...");
+//			gm.deleteUnsampledReport("OYJiKPPwSjeIRAq3SfiWKA");
 //			UnsampledReport report = gm.startUnsampledReport();
 //			System.out.println("report-Id=" + report.getId());
 			System.out.println("List reports....");
 			gm.collectUnsampledReports();
 			while (gm.next()) {
 				if (gm.hasCurrentUnsampledReport()) {
-					printout(gm.getCurrentUnsampledReport());
+					UnsampledReport r = gm.getCurrentUnsampledReport();
+					if (r.getId().equals("OYJiKPPwSjeIRAq3SfiWKA")) {
+						printout(r);
+					}
 				}
 			}
 			System.out.println("Done.");
+			
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		}
