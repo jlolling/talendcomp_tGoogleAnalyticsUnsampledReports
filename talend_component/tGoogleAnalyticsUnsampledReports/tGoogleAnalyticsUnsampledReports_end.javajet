@@ -27,29 +27,29 @@
 	} // close while from output connection of <%=cid%> 
 	globalMap.put("<%=cid%>_NB_LINE_UNSAMPLED_REPORTS", countUnsampledReports_<%=cid%>);
 <%  } else if ("START".equals(mode) && currentUnsampledReportRowName != null) { %>
-	} // close while from output connection of <%=cid%> 
+	} // close if from output connection of <%=cid%> 
 <%  } else if ("PARSE".equals(mode)) {
-    IConnection connPlain = null;
-    IConnection connDimensions = null;
-    IConnection connMetrics = null;
-	boolean normalizedFlows = "true".equals(ElementParameterParser.getValue(node, "__NORMALIZED_OUTPUT__"));
-    if (node.getOutgoingConnections() != null && node.getOutgoingConnections().size() > 0) {
-    	if (normalizedFlows) {
-		    List<? extends IConnection> connsDimensions = node.getOutgoingConnections("DIMENSION_VALUES");
-		    if (connsDimensions != null && connsDimensions.size() > 0) {
-		    	connDimensions = connsDimensions.get(0);
-		    }
-		    List<? extends IConnection> connsMetrics = node.getOutgoingConnections("METRIC_VALUES");
-		    if (connsMetrics != null && connsMetrics.size() > 0) {
-		    	connMetrics = connsMetrics.get(0);
-		    }
-    	} else {
-		    List<? extends IConnection> connsPlain = node.getOutgoingConnections();
-		    if (connsPlain != null && connsPlain.size() > 0) {
-		    	connPlain = connsPlain.get(0);
-		    }
-    	}
-    } %>
+       IConnection connPlain = null;
+       IConnection connDimensions = null;
+       IConnection connMetrics = null;
+  	   boolean normalizedFlows = "true".equals(ElementParameterParser.getValue(node, "__NORMALIZED_OUTPUT__"));
+       if (node.getOutgoingConnections() != null && node.getOutgoingConnections().size() > 0) {
+    	  if (normalizedFlows) {
+		     List<? extends IConnection> connsDimensions = node.getOutgoingConnections("DIMENSION_VALUES");
+		     if (connsDimensions != null && connsDimensions.size() > 0) {
+		     	connDimensions = connsDimensions.get(0);
+		     }
+		     List<? extends IConnection> connsMetrics = node.getOutgoingConnections("METRIC_VALUES");
+		     if (connsMetrics != null && connsMetrics.size() > 0) {
+		     	connMetrics = connsMetrics.get(0);
+		     }
+    	  } else {
+		     List<? extends IConnection> connsPlain = node.getOutgoingConnections();
+		     if (connsPlain != null && connsPlain.size() > 0) {
+		     	connPlain = connsPlain.get(0);
+		     }
+    	  }
+       } %>
 <%  if (connDimensions != null || connMetrics != null || connPlain != null) { %>    
 	} // close while from the connection of <%=cid%>
 <%  } %>
