@@ -17,7 +17,6 @@ package de.jlo.talendcomp.google.analytics.unsampled;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.SocketException;
 import java.sql.Timestamp;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
